@@ -1,12 +1,18 @@
 {
   "name": "use-bloc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "\"React useBloc custom hook to use with BLoC pattern\"",
+  "keywords": [
+    "react",
+    "hook",
+    "bloc"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "lint": "tsc --noEmit && eslint ./src --ext .ts --max-warnings 0",
+    "build": "rm -rf dist/* && tsc",
+    "prepublishOnly": "npm run build",
+    "lint": "tsc src/**/*.ts --noEmit && eslint ./src --ext .ts --max-warnings 0",
     "format": "prettier -w ./src",
     "format:check": "prettier -c ./src",
     "prepare": "husky install",
@@ -44,6 +50,6 @@
     "typescript": "^4.5.5"
   },
   "peerDependencies": {
-    "react": ">=16.0"
+    "react": ">=16.8"
   }
 }
