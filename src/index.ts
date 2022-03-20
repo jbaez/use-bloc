@@ -1,3 +1,1 @@
-import useBloc from './use-bloc';
-
-export { useBloc };
+export * from './use-bloc';

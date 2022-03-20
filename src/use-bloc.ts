@@ -1,37 +1,66 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
 type BlocInterface<P> = {
   dispose?: () => void;
-  updateParams?: (params: P) => void;
-} & object;
+} & Partial<BlocProps<P>>;
 
-type BlocParams<T = Record<string, unknown>> = {
-  [P in keyof T]: T[P];
+type BlocProps<P = Record<string, unknown>> = {
+  [K in keyof P]: P[K];
 };
 
-export interface BlocConstructor<T extends BlocInterface<P>, P> {
-  new (params: BlocParams<P>): T;
+type PropsKeys<P> = (keyof P)[];
+
+interface BlocConstructor<T extends BlocInterface<P>, P> {
+  new (props: BlocProps<P>): T;
 }
 
-export default function useBloc<T extends BlocInterface<P>, P>(
+/**
+ * Use BLoC Hook
+ */
+export function useBloc<T extends BlocInterface<P>, P>(
   Bloc: BlocConstructor<T, P>,
-  params: BlocParams<P>,
-  recreate?: (keyof P)[]
+  props: BlocProps<P>,
+  options?: {
+    stateProps?: PropsKeys<P>;
+    defaults?: Partial<P>;
+  }
 ) {
+  const stateProps = options?.stateProps;
+  const statePropsMap = useMemo<Map<keyof P, true> | undefined>(() => {
+    if (!stateProps) {
+      return;
+    }
+    return new Map(stateProps.map((stateProp) => [stateProp, true]));
+  }, [stateProps]);
+
+  const defaults = options?.defaults;
+  const defaultKeys = useMemo(() => {
+    return (defaults ? Object.keys(defaults) : []) as PropsKeys<P>;
+  }, [defaults]);
+
+  const propKeys = useMemo(() => {
+    return Object.keys(props) as PropsKeys<P>;
+  }, [props]);
+
+  const allPropKeys = useMemo(() => {
+    return new Set([...propKeys, ...defaultKeys]);
+  }, [propKeys, defaultKeys]);
+
   const blocRef = useRef<T>();
-  const paramsRef = useRef<P>();
-  if (!paramsRef.current) {
-    paramsRef.current = params;
+  const propsRef = useRef<P>();
+
+  if (!propsRef.current) {
+    propsRef.current = props;
   }
   let firstInit = false;
   if (!blocRef.current) {
-    blocRef.current = new Bloc(params);
+    blocRef.current = new Bloc(props);
     firstInit = true;
-  } else if (recreate && recreate.length) {
-    for (const param of recreate) {
-      if (paramsRef.current[param] !== params[param]) {
-        blocRef.current = new Bloc(params);
-        paramsRef.current = params;
+  } else if (statePropsMap && statePropsMap.size) {
+    for (const [prop] of statePropsMap) {
+      if (propsRef.current[prop] !== props[prop]) {
+        blocRef.current = new Bloc(props);
+        propsRef.current = props;
         firstInit = true;
         break;
       }
@@ -39,8 +68,14 @@ export default function useBloc<T extends BlocInterface<P>, P>(
   }
   const blocInstance = blocRef.current;
 
-  if (!firstInit && blocInstance.updateParams) {
-    blocInstance.updateParams(params);
+  if (!firstInit) {
+    // update non-state props
+    for (const key of allPropKeys) {
+      if (statePropsMap?.has(key) || !(key in blocInstance)) {
+        continue;
+      }
+      blocInstance[key] = (props[key] ?? defaults?.[key]) as T[typeof key];
+    }
   }
   useEffect(() => {
     return () => {
