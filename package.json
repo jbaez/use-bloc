@@ -1,6 +1,6 @@
 {
   "name": "use-bloc",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "\"React useBloc custom hook to use with BLoC pattern\"",
   "keywords": [
     "react",
