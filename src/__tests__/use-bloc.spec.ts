@@ -16,7 +16,6 @@ interface BlocProps {
 // Default props
 type BlocDefaults = Partial<BlocProps> &
   Required<Pick<BlocProps, 'mandatoryValue'>>;
-
 const defaults: BlocDefaults = Object.freeze({
   optionalValue: 'default optional value',
   mandatoryValue: 'default mandatory value',
@@ -28,14 +27,33 @@ const stateProps: StateProps = ['stateProp'];
 type BlocClassProps = BlocProps & BlocDefaults;
 // BLoC Class
 class BlocClass implements BlocClassProps {
+  value!: string;
+  stateProp!: string;
+  optionalValue?: string;
+  mandatoryValue!: string;
+  optionalWithoutDefault?: string;
+
+  constructor(props: BlocProps) {
+    hydrateBloc(this, props, defaults);
+  }
+  dispose = jest.fn();
+}
+// BLoC Class manual
+class BlocClassManual implements BlocClassProps {
   value: string;
   stateProp: string;
   optionalValue?: string;
   mandatoryValue: string;
   optionalWithoutDefault?: string;
+
   constructor(props: BlocProps) {
-    hydrateBloc(this, props, defaults);
+    this.value = props.value;
+    this.stateProp = props.stateProp;
+    this.optionalValue = props.optionalValue ?? defaults.optionalValue;
+    this.mandatoryValue = props.mandatoryValue ?? defaults.mandatoryValue;
+    this.optionalWithoutDefault = props.optionalWithoutDefault;
   }
+  updateProps = jest.fn(); // intentionally do nothing on implementation
   dispose = jest.fn();
 }
 
@@ -175,6 +193,42 @@ describe('useBloc custom hook', () => {
     expect(bloc.stateProp).toEqual(props.stateProp);
     expect(bloc.optionalValue).toEqual(defaults.optionalValue);
     expect(bloc.mandatoryValue).toEqual(defaults.mandatoryValue);
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
+  });
+
+  it('uses `updateProps` BLoC function if set, instead of automatic prop update', () => {
+    const props: BlocProps = {
+      value: 'test prop',
+      stateProp: 'test state',
+      optionalValue: 'test optional',
+      mandatoryValue: 'test mandatory',
+    };
+    const hook = renderHook(
+      (props) => useBloc(BlocClassManual, props, { stateProps }),
+      {
+        initialProps: props,
+      }
+    );
+    const initialBloc = hook.result.current;
+    expect(initialBloc.value).toEqual(props.value);
+    expect(initialBloc.stateProp).toEqual(props.stateProp);
+    expect(initialBloc.optionalValue).toEqual(props.optionalValue);
+    expect(initialBloc.mandatoryValue).toEqual(props.mandatoryValue);
     expect(initialBloc.optionalWithoutDefault).toBeUndefined();
+    // rerender with optional and mandatory props removed so it would use defaults
+    const updatedProps: BlocProps = {
+      value: 'new update value',
+      stateProp: props.stateProp,
+    };
+    hook.rerender(updatedProps);
+    const bloc = hook.result.current;
+    expect(bloc.updateProps).toHaveBeenCalledTimes(1);
+    expect(bloc.updateProps).toHaveBeenCalledWith(updatedProps);
+    // since `updateProps` implementation is empty the values should be the same
+    expect(bloc.value).toEqual(props.value);
+    expect(bloc.stateProp).toEqual(props.stateProp);
+    expect(bloc.optionalValue).toEqual(props.optionalValue);
+    expect(bloc.mandatoryValue).toEqual(props.mandatoryValue);
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
   });
 });

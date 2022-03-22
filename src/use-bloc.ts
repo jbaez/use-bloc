@@ -2,7 +2,9 @@ import { useEffect, useRef, useMemo } from 'react';
 
 type BlocInterface<P> = {
   dispose?: () => void;
-} & P;
+  updateProps?: (props: BlocProps<P>) => void;
+} & object &
+  P;
 
 type BlocProps<P> = {
   [K in keyof P]: P[K];
@@ -99,14 +101,6 @@ export function useBloc<T extends BlocInterface<P>, P>(
     [stateProps]
   );
 
-  const defaults = options?.defaults;
-  const defaultKeys = useMemo(() => getDefaultKeys(defaults), [defaults]);
-  const propKeys = useMemo(() => getPropKeys(props), [props]);
-  const allPropKeys = useMemo(
-    () => getAllPropKeys(propKeys, defaultKeys),
-    [propKeys, defaultKeys]
-  );
-
   const blocRef = useRef<T>();
   const propsRef = useRef<P>();
 
@@ -129,9 +123,24 @@ export function useBloc<T extends BlocInterface<P>, P>(
   }
   const blocInstance = blocRef.current;
 
-  if (!firstInit) {
-    // update non-state props
-    updateBloc(blocInstance, props, allPropKeys, defaults, statePropsMap);
+  if (typeof blocInstance.updateProps == 'function') {
+    // manual prop update handling
+    if (!firstInit) {
+      blocInstance.updateProps(props);
+    }
+  } else {
+    // automatic prop update handle
+    const defaults = options?.defaults;
+    const defaultKeys = useMemo(() => getDefaultKeys(defaults), [defaults]);
+    const propKeys = useMemo(() => getPropKeys(props), [props]);
+    const allPropKeys = useMemo(
+      () => getAllPropKeys(propKeys, defaultKeys),
+      [propKeys, defaultKeys]
+    );
+    if (!firstInit) {
+      // update non-state props
+      updateBloc(blocInstance, props, allPropKeys, defaults, statePropsMap);
+    }
   }
   useEffect(() => {
     return () => {
