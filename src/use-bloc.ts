@@ -2,16 +2,84 @@ import { useEffect, useRef, useMemo } from 'react';
 
 type BlocInterface<P> = {
   dispose?: () => void;
-} & Partial<BlocProps<P>>;
+} & P;
 
-type BlocProps<P = Record<string, unknown>> = {
+type BlocProps<P> = {
   [K in keyof P]: P[K];
 };
 
-type PropsKeys<P> = (keyof P)[];
+type PropKey<P> = keyof P;
+type PropsKeys<P> = PropKey<P>[];
 
 interface BlocConstructor<T extends BlocInterface<P>, P> {
   new (props: BlocProps<P>): T;
+}
+
+/**
+ * Returns the state props array as a map.
+ */
+function getStatePropMap<P>(
+  stateProps?: PropsKeys<P>
+): Map<PropKey<P>, true> | undefined {
+  if (!stateProps) {
+    return;
+  }
+  return new Map(stateProps.map((stateProp) => [stateProp, true]));
+}
+
+/**
+ * Returns an array containing the keys of "props"
+ */
+function getPropKeys<P>(props: BlocProps<P>): PropsKeys<P> {
+  return Object.keys(props) as PropsKeys<P>;
+}
+
+/**
+ * Returns an array containing the keys of "defaults" if provided.
+ */
+function getDefaultKeys<P>(defaults?: Partial<P>): PropsKeys<P> {
+  return (defaults ? Object.keys(defaults) : []) as PropsKeys<P>;
+}
+
+/**
+ * Returns the propKeys and default keys merged into a single Set.
+ */
+function getAllPropKeys<P>(propKeys: PropsKeys<P>, defaultKeys: PropsKeys<P>) {
+  return new Set([...propKeys, ...defaultKeys]);
+}
+
+/**
+ * Sets the updated props in the bloc instance.
+ */
+function updateBloc<T extends BlocInterface<P>, P, D extends Partial<P>>(
+  bloc: T,
+  props: BlocProps<P>,
+  allPropKeys: Iterable<PropKey<P>>,
+  defaults?: D,
+  statePropsMap?: Map<PropKey<P>, true>
+) {
+  for (const key of allPropKeys) {
+    if (statePropsMap?.has(key)) {
+      continue;
+    }
+    bloc[key] = (props[key] ?? defaults?.[key]) as unknown as T[typeof key];
+  }
+}
+
+/**
+ * Hydrates a BLoC instance.
+ * To be used in the constructor of the BLoC class.
+ */
+export function hydrateBloc<
+  T extends BlocInterface<P>,
+  P,
+  D extends Partial<P>
+>(bloc: T, props: BlocProps<P>, defaults?: D) {
+  const allPropKeys = getAllPropKeys(
+    getPropKeys(props),
+    getDefaultKeys(defaults)
+  );
+  updateBloc(bloc, props, allPropKeys, defaults);
 }
 
 /**
@@ -26,25 +94,18 @@ export function useBloc<T extends BlocInterface<P>, P>(
   }
 ) {
   const stateProps = options?.stateProps;
-  const statePropsMap = useMemo<Map<keyof P, true> | undefined>(() => {
-    if (!stateProps) {
-      return;
-    }
-    return new Map(stateProps.map((stateProp) => [stateProp, true]));
-  }, [stateProps]);
+  const statePropsMap = useMemo(
+    () => getStatePropMap(stateProps),
+    [stateProps]
+  );
 
   const defaults = options?.defaults;
-  const defaultKeys = useMemo(() => {
-    return (defaults ? Object.keys(defaults) : []) as PropsKeys<P>;
-  }, [defaults]);
-
-  const propKeys = useMemo(() => {
-    return Object.keys(props) as PropsKeys<P>;
-  }, [props]);
-
-  const allPropKeys = useMemo(() => {
-    return new Set([...propKeys, ...defaultKeys]);
-  }, [propKeys, defaultKeys]);
+  const defaultKeys = useMemo(() => getDefaultKeys(defaults), [defaults]);
+  const propKeys = useMemo(() => getPropKeys(props), [props]);
+  const allPropKeys = useMemo(
+    () => getAllPropKeys(propKeys, defaultKeys),
+    [propKeys, defaultKeys]
+  );
 
   const blocRef = useRef<T>();
   const propsRef = useRef<P>();
@@ -70,12 +131,7 @@ export function useBloc<T extends BlocInterface<P>, P>(
 
   if (!firstInit) {
     // update non-state props
-    for (const key of allPropKeys) {
-      if (statePropsMap?.has(key) || !(key in blocInstance)) {
-        continue;
-      }
-      blocInstance[key] = (props[key] ?? defaults?.[key]) as T[typeof key];
-    }
+    updateBloc(blocInstance, props, allPropKeys, defaults, statePropsMap);
   }
   useEffect(() => {
     return () => {
