@@ -64,7 +64,13 @@ function updateBloc<T extends BlocInterface<P>, P, D extends Partial<P>>(
     if (statePropsMap?.has(key)) {
       continue;
     }
-    bloc[key] = (props[key] ?? defaults?.[key]) as unknown as T[typeof key];
+    let value: unknown = props[key] ?? defaults?.[key];
+    if (Array.isArray(value)) {
+      value = [...value];
+    } else if (value !== null && typeof value == 'object') {
+      value = { ...value };
+    }
+    bloc[key] = value as T[typeof key];
   }
 }
 

@@ -12,6 +12,8 @@ interface BlocProps {
   optionalValue?: string;
   mandatoryValue?: string; // optional prop
   optionalWithoutDefault?: string;
+  optionalArray?: string[];
+  optionalObject?: object;
 }
 // Default props
 type BlocDefaults = Partial<BlocProps> &
@@ -32,6 +34,8 @@ class BlocClass implements BlocClassProps {
   optionalValue?: string;
   mandatoryValue!: string;
   optionalWithoutDefault?: string;
+  optionalArray?: string[];
+  optionalObject?: object;
 
   constructor(props: BlocProps) {
     hydrateBloc(this, props, defaults);
@@ -45,6 +49,8 @@ class BlocClassManual implements BlocClassProps {
   optionalValue?: string;
   mandatoryValue: string;
   optionalWithoutDefault?: string;
+  optionalArray?: string[];
+  optionalObject?: object;
 
   constructor(props: BlocProps) {
     this.value = props.value;
@@ -67,6 +73,8 @@ describe('useBloc custom hook', () => {
       value: 'test prop',
       stateProp: 'test state',
       optionalWithoutDefault: 'test optional without default',
+      optionalArray: ['one', 'two', 'three'],
+      optionalObject: { one: 1, two: 2, three: 3 },
     };
     const bloc = new BlocClass(props);
     expect(bloc.value).toEqual(props.value);
@@ -74,6 +82,10 @@ describe('useBloc custom hook', () => {
     expect(bloc.optionalWithoutDefault).toEqual(props.optionalWithoutDefault);
     expect(bloc.optionalValue).toEqual(defaults.optionalValue);
     expect(bloc.mandatoryValue).toEqual(defaults.mandatoryValue);
+    expect(bloc.optionalArray).not.toBe(props.optionalArray);
+    expect(bloc.optionalObject).not.toBe(props.optionalObject);
+    expect(bloc.optionalArray).toEqual(props.optionalArray);
+    expect(bloc.optionalObject).toEqual(props.optionalObject);
   });
 
   it('creates a BLoC instance, reuses it between rerenders and keeps it updated', () => {
@@ -82,6 +94,8 @@ describe('useBloc custom hook', () => {
       stateProp: 'test state',
       optionalValue: 'test optional',
       mandatoryValue: 'test mandatory',
+      optionalArray: ['one', 'two', 'three'],
+      optionalObject: { one: 1, two: 2, three: 3 },
     };
     const hook = renderHook(
       (props) => useBloc(BlocClass, props, { stateProps, defaults }),
@@ -95,6 +109,10 @@ describe('useBloc custom hook', () => {
     expect(initialBloc.optionalValue).toEqual(props.optionalValue);
     expect(initialBloc.mandatoryValue).toEqual(props.mandatoryValue);
     expect(initialBloc.optionalWithoutDefault).toBeUndefined();
+    expect(initialBloc.optionalArray).not.toBe(props.optionalArray);
+    expect(initialBloc.optionalObject).not.toBe(props.optionalObject);
+    expect(initialBloc.optionalArray).toEqual(props.optionalArray);
+    expect(initialBloc.optionalObject).toEqual(props.optionalObject);
     // rerender with same props
     hook.rerender(props);
     let bloc = hook.result.current;
@@ -102,20 +120,32 @@ describe('useBloc custom hook', () => {
     expect(bloc.stateProp).toEqual(props.stateProp);
     expect(bloc.optionalValue).toEqual(props.optionalValue);
     expect(bloc.mandatoryValue).toEqual(props.mandatoryValue);
-    expect(initialBloc.optionalWithoutDefault).toBeUndefined();
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
+    expect(bloc.optionalArray).toEqual(props.optionalArray);
+    expect(bloc.optionalObject).toEqual(props.optionalObject);
     expect(bloc).toBe(initialBloc);
     // rerender with updated props
-    hook.rerender({ ...props, value: 'updated prop value' });
+    let updatedProps: BlocProps = {
+      ...props,
+      value: 'updated prop value',
+      optionalArray: ['four', 'five', 'six'],
+      optionalObject: { four: 4, five: 5, six: 6 },
+    };
+    hook.rerender(updatedProps);
     bloc = hook.result.current;
     expect(bloc.value).toEqual('updated prop value');
-    expect(bloc.stateProp).toEqual(props.stateProp);
-    expect(bloc.optionalValue).toEqual(props.optionalValue);
-    expect(bloc.mandatoryValue).toEqual(props.mandatoryValue);
-    expect(initialBloc.optionalWithoutDefault).toBeUndefined();
+    expect(bloc.stateProp).toEqual(updatedProps.stateProp);
+    expect(bloc.optionalValue).toEqual(updatedProps.optionalValue);
+    expect(bloc.mandatoryValue).toEqual(updatedProps.mandatoryValue);
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
+    expect(bloc.optionalArray).not.toBe(updatedProps.optionalArray);
+    expect(bloc.optionalObject).not.toBe(updatedProps.optionalObject);
+    expect(bloc.optionalArray).toEqual(updatedProps.optionalArray);
+    expect(bloc.optionalObject).toEqual(updatedProps.optionalObject);
     expect(bloc).toBe(initialBloc);
     expect(bloc.dispose).not.toHaveBeenCalled();
     // rerender with added props
-    const updatedProps: BlocProps = {
+    updatedProps = {
       ...props,
       optionalWithoutDefault: 'test optional without default',
     };
@@ -158,7 +188,7 @@ describe('useBloc custom hook', () => {
     expect(bloc.stateProp).toEqual('updated state');
     expect(bloc.optionalValue).toEqual(props.optionalValue);
     expect(bloc.mandatoryValue).toEqual(props.mandatoryValue);
-    expect(initialBloc.optionalWithoutDefault).toBeUndefined();
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
     expect(bloc).not.toBe(initialBloc);
     expect(initialBloc.dispose).toHaveBeenCalledTimes(1);
   });
