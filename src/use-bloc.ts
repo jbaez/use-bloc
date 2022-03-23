@@ -2,13 +2,13 @@ import { useEffect, useRef, useMemo } from 'react';
 
 type DisposableInterface = {
   dispose?: () => void;
-};
+} & object;
 
 type BlocInterface<P> = DisposableInterface & {
   updateProps?: (props: BlocProps<P>) => void;
 };
 
-type BlocAutoInterface<P> = DisposableInterface & object & P;
+type BlocAutoInterface<P> = DisposableInterface & P;
 
 type AutoOptions<P> = {
   stateProps?: PropsKeys<P>;
