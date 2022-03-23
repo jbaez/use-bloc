@@ -1,10 +1,19 @@
 import { useEffect, useRef, useMemo } from 'react';
 
-type BlocInterface<P> = {
+type DisposableInterface = {
   dispose?: () => void;
+};
+
+type BlocInterface<P> = DisposableInterface & {
   updateProps?: (props: BlocProps<P>) => void;
-} & object &
-  P;
+};
+
+type BlocAutoInterface<P> = DisposableInterface & object & P;
+
+type AutoOptions<P> = {
+  stateProps?: PropsKeys<P>;
+  defaults?: Partial<P>;
+};
 
 type BlocProps<P> = {
   [K in keyof P]: P[K];
@@ -53,7 +62,7 @@ function getAllPropKeys<P>(propKeys: PropsKeys<P>, defaultKeys: PropsKeys<P>) {
 /**
  * Sets the updated props in the bloc instance.
  */
-function updateBloc<T extends BlocInterface<P>, P, D extends Partial<P>>(
+function updateBloc<T extends BlocAutoInterface<P>, P, D extends Partial<P>>(
   bloc: T,
   props: BlocProps<P>,
   allPropKeys: Iterable<PropKey<P>>,
@@ -79,7 +88,7 @@ function updateBloc<T extends BlocInterface<P>, P, D extends Partial<P>>(
  * To be used in the constructor of the BLoC class.
  */
 export function hydrateBloc<
-  T extends BlocInterface<P>,
+  T extends BlocAutoInterface<P>,
   P,
   D extends Partial<P>
 >(bloc: T, props: BlocProps<P>, defaults?: D) {
@@ -96,12 +105,23 @@ export function hydrateBloc<
 export function useBloc<T extends BlocInterface<P>, P>(
   Bloc: BlocConstructor<T, P>,
   props: BlocProps<P>,
-  options?: {
-    stateProps?: PropsKeys<P>;
-    defaults?: Partial<P>;
-  }
-) {
-  const stateProps = options?.stateProps;
+  stateProps?: PropsKeys<P>
+): T;
+
+export function useBloc<T extends BlocAutoInterface<P>, P>(
+  Bloc: BlocConstructor<T, P>,
+  props: BlocProps<P>,
+  options?: AutoOptions<P>
+): T;
+
+export function useBloc<T extends BlocAutoInterface<P>, P>(
+  Bloc: BlocConstructor<T, P>,
+  props: BlocProps<P>,
+  options?: AutoOptions<P> | PropsKeys<P>
+): T {
+  const isManuallyUpdated = options && Array.isArray(options);
+
+  const stateProps = isManuallyUpdated ? options : options?.stateProps;
   const statePropsMap = useMemo(
     () => getStatePropMap(stateProps),
     [stateProps]
@@ -129,13 +149,14 @@ export function useBloc<T extends BlocInterface<P>, P>(
   }
   const blocInstance = blocRef.current;
 
-  if (typeof blocInstance.updateProps == 'function') {
+  if (isManuallyUpdated) {
     // manual prop update handling
-    if (!firstInit) {
-      blocInstance.updateProps(props);
+    const blocManual: BlocInterface<P> = blocInstance;
+    if (!firstInit && typeof blocManual.updateProps == 'function') {
+      blocManual.updateProps(props);
     }
   } else {
-    // automatic prop update handle
+    // automatic prop update handling
     const defaults = options?.defaults;
     const defaultKeys = useMemo(() => getDefaultKeys(defaults), [defaults]);
     const propKeys = useMemo(() => getPropKeys(props), [props]);

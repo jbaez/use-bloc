@@ -226,7 +226,7 @@ describe('useBloc custom hook', () => {
     expect(bloc.optionalWithoutDefault).toBeUndefined();
   });
 
-  it('uses `updateProps` BLoC function if set, instead of automatic prop update', () => {
+  it('updates bloc manually if instead of options an array of stateProps is used', () => {
     const props: BlocProps = {
       value: 'test prop',
       stateProp: 'test state',
@@ -234,7 +234,7 @@ describe('useBloc custom hook', () => {
       mandatoryValue: 'test mandatory',
     };
     const hook = renderHook(
-      (props) => useBloc(BlocClassManual, props, { stateProps }),
+      (props) => useBloc(BlocClassManual, props, stateProps),
       {
         initialProps: props,
       }
@@ -246,6 +246,32 @@ describe('useBloc custom hook', () => {
     expect(initialBloc.mandatoryValue).toEqual(props.mandatoryValue);
     expect(initialBloc.optionalWithoutDefault).toBeUndefined();
     // rerender with optional and mandatory props removed so it would use defaults
+    const updatedProps: BlocProps = {
+      value: 'new update value',
+      stateProp: props.stateProp,
+    };
+    hook.rerender(updatedProps);
+    const bloc = hook.result.current;
+    expect(bloc.updateProps).toHaveBeenCalledTimes(1);
+    expect(bloc.updateProps).toHaveBeenCalledWith(updatedProps);
+    // since `updateProps` implementation is empty the values should be the same
+    expect(bloc.value).toEqual(props.value);
+    expect(bloc.stateProp).toEqual(props.stateProp);
+    expect(bloc.optionalValue).toEqual(props.optionalValue);
+    expect(bloc.mandatoryValue).toEqual(props.mandatoryValue);
+    expect(bloc.optionalWithoutDefault).toBeUndefined();
+  });
+
+  it('prevents auto updates when an empty array of state props is used', () => {
+    const props: BlocProps = {
+      value: 'test prop',
+      stateProp: 'test state',
+      optionalValue: 'test optional',
+      mandatoryValue: 'test mandatory',
+    };
+    const hook = renderHook((props) => useBloc(BlocClassManual, props, []), {
+      initialProps: props,
+    });
     const updatedProps: BlocProps = {
       value: 'new update value',
       stateProp: props.stateProp,
