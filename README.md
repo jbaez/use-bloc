@@ -1,6 +1,6 @@
 # use-bloc
 
-React useBloc custom hook to use with BLoC pattern
+React useBloc custom hook to be used with BLoC pattern
 
 ## Introduction:
 
@@ -196,9 +196,22 @@ class CheckboxBloc {
 
 Note that in TypeScript when defining the properties in the BLoC Class the definite assignment assertion `!` would need to be used (depending on TypeScript configuration) since the props are not longer directly initialized in the constructor.
 
+### Init BLoC
+
+When the component associated to the BLoC is first rendered, or a "state prop" changes causing the BLoC to be re-instantiated, the `init` method would be called if it's defined in the BLoC.
+A useful scenario for using this is on a component that calls an API endpoint on init. It would be preferable to use the init method instead of doing the API call in the constructor so it can be easily unit-tested.
+
+```javascript
+class MyComponentBloc {
+  async init() {
+    // API call
+  }
+}
+```
+
 ### Disposing resources
 
-When the component is removed from the DOM, if the BLoC has subscriptions, timers, references, etc. they would need to be disposed. For that there is an optional `dispose` method that the BLoC class can implement if needed.
+When the component associated to the BLoC is removed from the DOM, if the BLoC has subscriptions, timers, references, etc. they would need to be disposed. For that there is an optional `dispose` method that the BLoC class can implement if needed.
 
 ```javascript
 class MyComponentBloc {

@@ -2,7 +2,7 @@ import { useBloc, hydrateBloc } from '..';
 import { renderHook } from '@testing-library/react-hooks';
 
 //
-// Test BLoC Class
+// Test BLoC Stubs
 //
 
 // BLoC Props interface
@@ -25,10 +25,10 @@ const defaults: BlocDefaults = Object.freeze({
 // State props
 type StateProps = (keyof BlocProps)[];
 const stateProps: StateProps = ['stateProp'];
-// BLoC Class props
-type BlocClassProps = BlocProps & BlocDefaults;
-// BLoC Class
-class BlocClass implements BlocClassProps {
+// BLoC stub props
+type BlocStubProps = BlocProps & BlocDefaults;
+// BLoC stub
+class BlocStub implements BlocStubProps {
   value!: string;
   stateProp!: string;
   optionalValue?: string;
@@ -42,8 +42,8 @@ class BlocClass implements BlocClassProps {
   }
   dispose = jest.fn();
 }
-// BLoC Class manual
-class BlocClassManual implements BlocClassProps {
+// BLoC stub manual
+class BlocStubManual implements BlocStubProps {
   value: string;
   stateProp: string;
   optionalValue?: string;
@@ -62,12 +62,55 @@ class BlocClassManual implements BlocClassProps {
   updateProps = jest.fn(); // intentionally do nothing on implementation
   dispose = jest.fn();
 }
+// BLoC Stub simple
+class BlocStubSimple {
+  value: string;
+  stateProp: string;
+
+  constructor({ value, stateProp }: BlocProps) {
+    this.value = value;
+    this.stateProp = stateProp;
+  }
+  init = jest.fn();
+}
 
 //
 // useBloc Specs
 //
 
 describe('useBloc custom hook', () => {
+  it('calls init on first render (if defined)', () => {
+    const initialProps: BlocProps = {
+      value: 'test prop',
+      stateProp: 'test state',
+    };
+    const hook = renderHook(
+      (props) => useBloc(BlocStubSimple, props, ['stateProp']),
+      {
+        initialProps,
+      }
+    );
+    const initialBloc = hook.result.current;
+    expect(initialBloc.init).toHaveBeenCalledTimes(1);
+    // should not be called again on re-render
+    hook.rerender(initialProps);
+    let currentBloc = hook.result.current;
+    expect(currentBloc).toBe(initialBloc);
+    expect(currentBloc.init).toHaveBeenCalledTimes(1);
+    // should not be called again on a re-render due to a prop change
+    let updatedProps: BlocProps = { ...initialProps, value: 'updated value' };
+    hook.rerender(updatedProps);
+    currentBloc = hook.result.current;
+    expect(currentBloc).toBe(initialBloc);
+    expect(currentBloc.init).toHaveBeenCalledTimes(1);
+    // should be called again if a state related prop has changed, causing recreating the bloc
+    updatedProps = { ...updatedProps, stateProp: 'updated state' };
+    hook.rerender(updatedProps);
+    currentBloc = hook.result.current;
+    expect(currentBloc).not.toBe(initialBloc);
+    expect(currentBloc.init).toHaveBeenCalledTimes(1);
+    expect(initialBloc.init).toHaveBeenCalledTimes(1); // no extra call on initial bloc
+  });
   it('hydrates the BLoC class with values from props and defaults', () => {
     const props: BlocProps = {
       value: 'test prop',
@@ -76,7 +119,7 @@ describe('useBloc custom hook', () => {
       optionalArray: ['one', 'two', 'three'],
       optionalObject: { one: 1, two: 2, three: 3 },
     };
-    const bloc = new BlocClass(props);
+    const bloc = new BlocStub(props);
     expect(bloc.value).toEqual(props.value);
     expect(bloc.stateProp).toEqual(props.stateProp);
     expect(bloc.optionalWithoutDefault).toEqual(props.optionalWithoutDefault);
@@ -98,7 +141,7 @@ describe('useBloc custom hook', () => {
       optionalObject: { one: 1, two: 2, three: 3 },
     };
     const hook = renderHook(
-      (props) => useBloc(BlocClass, props, { stateProps, defaults }),
+      (props) => useBloc(BlocStub, props, { stateProps, defaults }),
       {
         initialProps: props,
       }
@@ -170,7 +213,7 @@ describe('useBloc custom hook', () => {
       mandatoryValue: 'test mandatory',
     };
     const hook = renderHook(
-      (props) => useBloc(BlocClass, props, { stateProps, defaults }),
+      (props) => useBloc(BlocStub, props, { stateProps, defaults }),
       {
         initialProps: props,
       }
@@ -201,7 +244,7 @@ describe('useBloc custom hook', () => {
       mandatoryValue: 'test mandatory',
     };
     const hook = renderHook(
-      (props) => useBloc(BlocClass, props, { stateProps, defaults }),
+      (props) => useBloc(BlocStub, props, { stateProps, defaults }),
       {
         initialProps: props,
       }
@@ -234,7 +277,7 @@ describe('useBloc custom hook', () => {
       mandatoryValue: 'test mandatory',
     };
     const hook = renderHook(
-      (props) => useBloc(BlocClassManual, props, stateProps),
+      (props) => useBloc(BlocStubManual, props, stateProps),
       {
         initialProps: props,
       }
@@ -269,7 +312,7 @@ describe('useBloc custom hook', () => {
       optionalValue: 'test optional',
       mandatoryValue: 'test mandatory',
     };
-    const hook = renderHook((props) => useBloc(BlocClassManual, props, []), {
+    const hook = renderHook((props) => useBloc(BlocStubManual, props, []), {
       initialProps: props,
     });
     const updatedProps: BlocProps = {

@@ -1,14 +1,15 @@
 import { useEffect, useRef, useMemo } from 'react';
 
-type DisposableInterface = {
+type BlocInterface = {
   dispose?: () => void;
+  init?: () => void;
 } & object;
 
-type BlocInterface<P> = DisposableInterface & {
+type BlocManualInterface<P> = BlocInterface & {
   updateProps?: (props: BlocProps<P>) => void;
 };
 
-type BlocAutoInterface<P> = DisposableInterface & P;
+type BlocAutoInterface<P> = BlocInterface & P;
 
 type AutoOptions<P> = {
   stateProps?: PropsKeys<P>;
@@ -22,7 +23,7 @@ type BlocProps<P> = {
 type PropKey<P> = keyof P;
 type PropsKeys<P> = PropKey<P>[];
 
-interface BlocConstructor<T extends BlocInterface<P>, P> {
+interface BlocConstructor<T extends BlocInterface, P> {
   new (props: BlocProps<P>): T;
 }
 
@@ -102,7 +103,7 @@ export function hydrateBloc<
 /**
  * Use BLoC Hook
  */
-export function useBloc<T extends BlocInterface<P>, P>(
+export function useBloc<T extends BlocInterface, P>(
   Bloc: BlocConstructor<T, P>,
   props: BlocProps<P>,
   stateProps?: PropsKeys<P>
@@ -149,9 +150,13 @@ export function useBloc<T extends BlocAutoInterface<P>, P>(
   }
   const blocInstance = blocRef.current;
 
+  if (firstInit && typeof blocInstance.init == 'function') {
+    blocInstance.init();
+  }
+
   if (isManuallyUpdated) {
     // manual prop update handling
-    const blocManual: BlocInterface<P> = blocInstance;
+    const blocManual: BlocManualInterface<P> = blocInstance;
     if (!firstInit && typeof blocManual.updateProps == 'function') {
       blocManual.updateProps(props);
     }
