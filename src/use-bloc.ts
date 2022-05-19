@@ -77,6 +77,8 @@ function updateBloc<T extends BlocAutoInterface<P>, P, D extends Partial<P>>(
     let value: unknown = props[key] ?? defaults?.[key];
     if (Array.isArray(value)) {
       value = [...value];
+    } else if (value instanceof Date) {
+      value = new Date(value);
     } else if (value !== null && typeof value == 'object') {
       value = { ...value };
     }

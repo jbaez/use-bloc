@@ -14,6 +14,7 @@ interface BlocProps {
   optionalWithoutDefault?: string;
   optionalArray?: string[];
   optionalObject?: object;
+  optionalDate?: Date;
 }
 // Default props
 type BlocDefaults = Partial<BlocProps> &
@@ -36,6 +37,7 @@ class BlocStub implements BlocStubProps {
   optionalWithoutDefault?: string;
   optionalArray?: string[];
   optionalObject?: object;
+  optionalDate?: Date;
 
   constructor(props: BlocProps) {
     hydrateBloc(this, props, defaults);
@@ -111,13 +113,16 @@ describe('useBloc custom hook', () => {
     expect(currentBloc.init).toHaveBeenCalledTimes(1);
     expect(initialBloc.init).toHaveBeenCalledTimes(1); // no extra call on initial bloc
   });
+
   it('hydrates the BLoC class with values from props and defaults', () => {
+    const isoDate = '2022-05-19T10:17:14.243Z';
     const props: BlocProps = {
       value: 'test prop',
       stateProp: 'test state',
       optionalWithoutDefault: 'test optional without default',
       optionalArray: ['one', 'two', 'three'],
       optionalObject: { one: 1, two: 2, three: 3 },
+      optionalDate: new Date(isoDate),
     };
     const bloc = new BlocStub(props);
     expect(bloc.value).toEqual(props.value);
@@ -129,6 +134,10 @@ describe('useBloc custom hook', () => {
     expect(bloc.optionalObject).not.toBe(props.optionalObject);
     expect(bloc.optionalArray).toEqual(props.optionalArray);
     expect(bloc.optionalObject).toEqual(props.optionalObject);
+    expect(bloc.optionalDate).toBeInstanceOf(Date);
+    expect(bloc.optionalDate.valueOf() - new Date(isoDate).valueOf()).toEqual(
+      0
+    );
   });
 
   it('creates a BLoC instance, reuses it between rerenders and keeps it updated', () => {
